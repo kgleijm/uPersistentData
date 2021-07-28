@@ -9,15 +9,19 @@ class Pdp:
     def __init__(self, publicName, value):
         self.load()
         self.publicName = publicName
+        self.verify(self.getdefault())
+        self.getCommunicationRepresentation()
         if not self.set(value):
             print("Error, initial value of", publicName, " does not pass validation")
             self.set(self.getdefault())
-
 
     def verify(self, value):
         raise NotImplementedError
 
     def getdefault(self):
+        raise NotImplementedError
+
+    def getCommunicationRepresentation(self):
         raise NotImplementedError
 
     @staticmethod
@@ -61,6 +65,7 @@ class PdpPercent(Pdp):
 
     def __init__(self, publicName, value):
         super().__init__(publicName, value)
+        self.configType = "percentConfig"
 
     def getdefault(self):
         return 0
@@ -74,8 +79,10 @@ class PdpPercent(Pdp):
 class PdpString(Pdp):
 
     def __init__(self, publicName, value, maxLength):
-        self.maxLength = maxLength
         super().__init__(publicName, value)
+        self.maxLength = maxLength
+        self.configType = "stringConfig"
+
 
     def getdefault(self):
         return ""
