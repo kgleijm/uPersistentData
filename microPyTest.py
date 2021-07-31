@@ -1,26 +1,27 @@
-
 import json
+
 
 # "abstract" class to encapsulate variables and manage persistence by keeping a record on file
 class Pdp:
-
     # static dict keeping track of all Pdp values's
     persistentData = dict()
 
     def __init__(self, publicName, value):
         self.load()
         self.publicName = publicName
-        self.verify(self.getdefault())
-        if not self.set(value):
+        self.verify(self.getDefault())
+        if self.publicName in Pdp.persistentData:
+            print("value for", publicName, "already exists, loaded:", self.get())
+        elif not self.set(value):
             print("Error, initial value of", publicName, " does not pass validation")
-            self.set(self.getdefault())
+            self.set(self.getDefault())
 
     # Overridable method where childClasses can verify their input data
     def verify(self, value):
         raise NotImplementedError
 
     # Returns a default when no initial value is supplied
-    def getdefault(self):
+    def getDefault(self):
         raise NotImplementedError
 
     # Static "private" method to sync dictionary of values with record on file
@@ -70,36 +71,65 @@ class PdpString(Pdp):
 
     def __init__(self, publicName, value, maxLength):
         self.maxLength = maxLength
-        self.PdpType = "stringPdp"
         super().__init__(publicName, value)
 
-    def getdefault(self):
+    def getDefault(self):
         return ""
 
     def verify(self, value):
         return isinstance(value, str) and len(value) <= self.maxLength
 
 
-
-
-class PdpConfig(Pdp):
+class PdpNumeric(Pdp):
 
     def __init__(self, publicName, value):
         super().__init__(publicName, value)
+
+    def getDefault(self):
+        return 0
+
+    def verify(self, value):
+        # microPython does not support isnumeric().
+        # Trying to add a non numeric value to an int will cause an exception thus returning false
+        try:
+            1 + value
+            return True
+        except:
+            return False
+
+# Configs are the type of persistent dataPoints communicated and possibly altered by a remote device
+class Config(Pdp):
+
+    def __init__(self, publicName, value, mutable):
+        super().__init__("Conf_" + publicName, value)
+        self.configType = "Config base"
+        self.mutable = mutable
         self.getCommunicationRepresentation()
-        self.configType = "percentConfig"
 
     def getCommunicationRepresentation(self):
+        return {"Type": self.getType(), "Name": self.publicName, "Value": self.get(), "Mutable": self.mutable}
+
+    def update(self, newRepresentation):
+
+        if self.mutable:
+            try:
+                return self.set(newRepresentation["Value"])
+            except:
+                print("Unexpected error at update of ", self.publicName)
+                return False
+        else:
+            print("Unexpected operation,", self.publicName, "tried to mutate but is immutable")
+
+    def getType(self):
         raise NotImplementedError
 
 
-class PdpPercent(Pdp):
+class ConfigPercent(Config):
 
-    def __init__(self, publicName, value):
-        super().__init__(publicName, value)
-        self.PdpType = "percent"
+    def __init__(self, publicName, value, mutable):
+        super().__init__(publicName, value, mutable)
 
-    def getdefault(self):
+    def getDefault(self):
         return 0
 
     def verify(self, value):
@@ -108,57 +138,21 @@ class PdpPercent(Pdp):
         except:
             return False
 
+    def getType(self):
+        return "Percent"
 
 
+Pdp.reset()
 
+testNumeric = PdpNumeric("TestNumeric", "asdasd")
+testNumeric.set("äsdasdas")
+testNumeric.set(78)
 
-PdpString.reset()
+testPercConf = ConfigPercent("TestPercConf", 15, True)
 
+print(testPercConf.getCommunicationRepresentation())
+testPercConf.update({'Type': 'Percent', 'Name': 'Conf_TestPercConf', 'Value': 77, 'Mutable': True})
+print(testPercConf.getCommunicationRepresentation())
 
-
-test = PdpPercent("TestPercent", 103)
-testString = PdpString("TestString", "Super Cool String", 100)
-
-
-test.set(25)
-
-
-test.set("asdasd")
-
-print("Got from get()", test.get())
 
 print("Sucessfully ran script")
-
-    # Pdp stands for persistent dataPoint and is a variable that stores its data in persistent memory using jsons
-
-
-
-#
-# class A:
-#     def __init__(self, msg):
-#         print("Class A constructor with msg:", msg)
-#
-# class B(A):
-#     def __init__(self, msg):
-#         super().__init__(msg)
-#         print("Class B constructor")
-#
-# b = B("Yo")
-
-# import json
-#
-# data = dict()
-#
-# data["0"] = "yes"
-# data["1"] = True
-# data["2"] = 0
-#
-#
-# with open("persistentData.json", "w") as f:
-#     json.dump(data, f)
-#
-# with open("persistentData.json", "r") as f:
-#     data2 = json.load(f)
-#     print("0:", data2["0"])
-#     print("1:", data2["1"])
-#     print("2:", data2["2"])
