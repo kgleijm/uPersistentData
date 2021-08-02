@@ -7,14 +7,25 @@ class Pdp:
     persistentData = dict()
 
     def __init__(self, publicName, value):
+
+        # Read values from record on file
         self.load()
+
+        # Initiate record keeping in working memory
+        # Simulate abstraction by calling a nonexistent function
         self.publicName = publicName
+        self.data = {"Name": self.publicName}
         self.verify(self.getDefault())
+
         if self.publicName in Pdp.persistentData:
             print("value for", publicName, "already exists, loaded:", self.get())
         elif not self.set(value):
             print("Error, initial value of", publicName, " does not pass validation")
             self.set(self.getDefault())
+
+        # store representation of data in dict
+        self.data = {"Name": self.publicName}
+
 
     # Overridable method where childClasses can verify their input data
     def verify(self, value):
