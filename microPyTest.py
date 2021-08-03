@@ -14,7 +14,6 @@ class Pdp:
         # Initiate record keeping in working memory
         # Simulate abstraction by calling a nonexistent function
         self.publicName = publicName
-        self.data = {"Name": self.publicName}
         self.verify(self.getDefault())
 
         if self.publicName in Pdp.persistentData:
@@ -22,10 +21,6 @@ class Pdp:
         elif not self.set(value):
             print("Error, initial value of", publicName, " does not pass validation")
             self.set(self.getDefault())
-
-        # store representation of data in dict
-        self.data = {"Name": self.publicName}
-
 
     # Overridable method where childClasses can verify their input data
     def verify(self, value):
@@ -108,14 +103,20 @@ class PdpNumeric(Pdp):
         except:
             return False
 
+
 # Configs are the type of persistent dataPoints communicated and possibly altered by a remote device
 class Config(Pdp):
 
+    def get(self):
+        return self.data["Value"]
+
     def __init__(self, publicName, value, mutable):
-        super().__init__("Conf_" + publicName, value)
         self.configType = "Config base"
         self.mutable = mutable
-        self.getCommunicationRepresentation()
+        # self.getCommunicationRepresentation()
+        super().__init__("Conf_" + publicName, value)
+        self.data = {"Type": self.getType(), "Name": self.publicName, "Value": self.get(), "Mutable": self.mutable}
+
 
     def getCommunicationRepresentation(self):
         return {"Type": self.getType(), "Name": self.publicName, "Value": self.get(), "Mutable": self.mutable}
@@ -164,6 +165,5 @@ testPercConf = ConfigPercent("TestPercConf", 15, True)
 print(testPercConf.getCommunicationRepresentation())
 testPercConf.update({'Type': 'Percent', 'Name': 'Conf_TestPercConf', 'Value': 77, 'Mutable': True})
 print(testPercConf.getCommunicationRepresentation())
-
 
 print("Sucessfully ran script")
