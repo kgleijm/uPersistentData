@@ -1,5 +1,7 @@
 import json
 
+print("test started")
+
 
 # "abstract" class to encapsulate variables and manage persistence by keeping a record on file
 class Pdp:
