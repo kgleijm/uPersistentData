@@ -14,7 +14,6 @@ class Pdp:
         # Initiate record keeping in working memory
         # Simulate abstraction by calling a nonexistent function
         self.publicName = publicName
-        self.data = {"Name": self.publicName}
         self.verify(self.getDefault())
 
         if self.publicName in Pdp.persistentData:
@@ -64,6 +63,8 @@ class Pdp:
         except:
             print()
 
+
+
     # Set value to input with forced Verification
     def set(self, value):
         if self.verify(value):
@@ -111,25 +112,36 @@ class PdpNumeric(Pdp):
 # Configs are the type of persistent dataPoints communicated and possibly altered by a remote device
 class Config(Pdp):
 
+    configDict = dict()
+
     def __init__(self, publicName, value, mutable):
-        super().__init__("Conf_" + publicName, value)
-        self.configType = "Config base"
+        myName = "Configuration_" + publicName
+        super().__init__(myName, value)
+        self.configType = "Base"
+        Config.configDict[myName] = self
         self.mutable = mutable
         self.getCommunicationRepresentation()
 
     def getCommunicationRepresentation(self):
         return {"Type": self.getType(), "Name": self.publicName, "Value": self.get(), "Mutable": self.mutable}
 
-    def update(self, newRepresentation):
 
-        if self.mutable:
-            try:
-                return self.set(newRepresentation["Value"])
-            except:
-                print("Unexpected error at update of ", self.publicName)
-                return False
-        else:
-            print("Unexpected operation,", self.publicName, "tried to mutate but is immutable")
+    @staticmethod
+    def handleUpdate(newRepresentation):
+
+
+        if newRepresentation["Name"] in Config.configDict:
+
+            oldRepresentation = Config.configDict[newRepresentation["Name"]]
+
+            if oldRepresentation.mutable:
+                try:
+                    return Config.configDict[newRepresentation["Name"]].set(newRepresentation["Value"])
+                except:
+                    print("Unexpected error at update of ", newRepresentation["Name"].publicName)
+                    return False
+            else:
+                print("Unexpected operation,", newRepresentation["Name"], "tried to mutate but is immutable")
 
     def getType(self):
         raise NotImplementedError
@@ -159,10 +171,10 @@ testNumeric = PdpNumeric("TestNumeric", "asdasd")
 testNumeric.set("äsdasdas")
 testNumeric.set(78)
 
-testPercConf = ConfigPercent("TestPercConf", 15, True)
+testPercConf = ConfigPercent("TestPercConf", 15, False)
 
 print(testPercConf.getCommunicationRepresentation())
-testPercConf.update({'Type': 'Percent', 'Name': 'Conf_TestPercConf', 'Value': 77, 'Mutable': True})
+Config.handleUpdate({'Type': 'Percent', 'Name': 'Configuration_TestPercConf', 'Value': 77, 'Mutable': True})
 print(testPercConf.getCommunicationRepresentation())
 
 
