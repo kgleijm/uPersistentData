@@ -27,7 +27,6 @@ class Pdp:
         # store representation of data in dict
         self.data = {"Name": self.publicName}
 
-
     # Overridable method where childClasses can verify their input data
     def verify(self, value):
         raise NotImplementedError
@@ -65,8 +64,6 @@ class Pdp:
         except:
             print()
 
-
-
     # Set value to input with forced Verification
     def set(self, value):
         if self.verify(value):
@@ -83,7 +80,7 @@ class Pdp:
 
 class PdpString(Pdp):
 
-    def __init__(self, publicName, value, maxLength):
+    def __init__(self, publicName, value, maxLength=30):
         self.maxLength = maxLength
         super().__init__(publicName, value)
 
@@ -116,8 +113,39 @@ class Config(Pdp):
 
     configDict = dict()
 
-    def __init__(self, publicName, value, mutable):
-        myName = "Configuration_" + publicName
+    @staticmethod
+    def getConfigList():
+        out = []
+        for e in Config.configDict.values():
+            out.append(e.getCommunicationRepresentation())
+        return out
+
+    @staticmethod
+    def handleUpdateEntry(newRepresentation):
+
+        if type(newRepresentation) == list:
+            successful = True
+            for rep in newRepresentation:
+                if not Config.handleUpdateEntry(rep):
+                    successful = False
+            return successful
+
+        if newRepresentation["Name"] in Config.configDict:
+
+            oldRepresentation = Config.configDict[newRepresentation["Name"]]
+
+            if oldRepresentation.mutable and oldRepresentation["Type"] == newRepresentation["Type"]:
+                try:
+                    return Config.configDict[newRepresentation["Name"]].set(newRepresentation["Value"])
+                except:
+                    print("Unexpected error at update of ", newRepresentation["Name"].publicName)
+                    return False
+            else:
+                print("\nUnexpected operation,", newRepresentation["Name"], "\ntried to mutate but is immutable\nor is a type mismatch\n")
+                return False
+
+    def __init__(self, publicName, value, mutable=True):
+        myName = "Public_" + publicName
         super().__init__(myName, value)
         self.configType = "Base"
         Config.configDict[myName] = self
@@ -128,22 +156,7 @@ class Config(Pdp):
         return {"Type": self.getType(), "Name": self.publicName, "Value": self.get(), "Mutable": self.mutable}
 
 
-    @staticmethod
-    def handleUpdate(newRepresentation):
 
-
-        if newRepresentation["Name"] in Config.configDict:
-
-            oldRepresentation = Config.configDict[newRepresentation["Name"]]
-
-            if oldRepresentation.mutable:
-                try:
-                    return Config.configDict[newRepresentation["Name"]].set(newRepresentation["Value"])
-                except:
-                    print("Unexpected error at update of ", newRepresentation["Name"].publicName)
-                    return False
-            else:
-                print("Unexpected operation,", newRepresentation["Name"], "tried to mutate but is immutable")
 
     def getType(self):
         raise NotImplementedError
@@ -167,17 +180,27 @@ class ConfigPercent(Config):
         return "Percent"
 
 
+class ConfigString(PdpString, Config):
+
+    def __init__(self, publicName, value, mutable, maxLength):
+        super().__init__(publicName, value)
+        self.mutable = mutable
+        self.maxLength = maxLength
+
+    def getType(self):
+        return "String"
+
+
 Pdp.reset()
 
 testNumeric = PdpNumeric("TestNumeric", "asdasd")
 testNumeric.set("äsdasdas")
 testNumeric.set(78)
 
-testPercConf = ConfigPercent("TestPercConf", 15, False)
+testStringConf = ConfigString("aString", "Test", True, 4)
+testStringConf.set("tst")
+testStringConf.set("testToolong")
 
-print(testPercConf.getCommunicationRepresentation())
-Config.handleUpdate({'Type': 'Percent', 'Name': 'Configuration_TestPercConf', 'Value': 77, 'Mutable': True})
-print(testPercConf.getCommunicationRepresentation())
-
+print("COnfigList:", Config.getConfigList())
 
 print("Sucessfully ran script")
